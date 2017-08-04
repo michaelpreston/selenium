@@ -39,6 +39,10 @@ import org.seleniumhq.jetty9.server.Server;
 import org.seleniumhq.jetty9.server.ServerConnector;
 import org.seleniumhq.jetty9.servlet.ServletContextHandler;
 import org.seleniumhq.jetty9.util.thread.QueuedThreadPool;
+import org.seleniumhq.jetty9.util.ssl.SslContextFactory;
+import org.seleniumhq.jetty9.server.SecureRequestCustomizer;
+import org.seleniumhq.jetty9.server.SslConnectionFactory;
+import org.seleniumhq.jetty9.server.Connector;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -146,16 +150,44 @@ public class Hub {
         server = new Server();
       }
 
+      //Create standard HTTP configuration and tell it about secureScheme
       HttpConfiguration httpConfig = new HttpConfiguration();
       httpConfig.setSecureScheme("https");
       httpConfig.setSecurePort(config.port);
 
-      log.info("Will listen on " + config.port);
-
+      //Create http connector
       ServerConnector http = new ServerConnector(server, new HttpConnectionFactory(httpConfig));
       http.setPort(config.port);
 
-      server.addConnector(http);
+      //Create a HTTPS configuration using the HTTP configuration
+      HttpConfiguration httpsConfig = new HttpConfiguration(httpConfig);
+      httpsConfig.addCustomizer(new SecureRequestCustomizer());
+
+      //NEED TO SET THIS UP BEFORE WE CAN BUILD!!!!!!!!!!!!!!!!!!!!!!!
+      //Set keystore so we can store certs
+      //Path keystore = getKeyStore();
+      //if (!Files.exists(keystore)) {
+        //throw new RuntimeException(
+            //"Cannot find keystore for SSL cert: " + keystore.toAbsolutePath());
+      //}
+
+      //Setup a factory to point to the keystore (DONT NEED TO PASS DIRECTORY IN HERE IF ABOVE STARTS WORKING)
+      SslContextFactory sslContextFactory = new SslContextFactory("/home/michael/ssl/keystore.keystore");
+      sslContextFactory.setKeyStorePassword("password");
+      sslContextFactory.setKeyManagerPassword("password");
+
+      //Create a HTTPS ServerConnector using port passed in
+      ServerConnector https = new ServerConnector(
+          server,
+          new SslConnectionFactory(sslContextFactory, "http/1.1"),
+          new HttpConnectionFactory(httpsConfig));
+      https.setPort(config.port);
+      https.setIdleTimeout(500000);
+
+      //Set connectors for both schemes
+      server.setConnectors(new Connector[]{http, https});
+
+      log.info("Will listen on " + config.port);
 
       ServletContextHandler root = new ServletContextHandler(ServletContextHandler.SESSIONS);
       root.setContextPath("/");
@@ -193,8 +225,14 @@ public class Hub {
   }
 
   public URL getUrl(String path) {
+    String protocol = "http://";
+
+    if (config.allowHttpsConnection == true) {
+      protocol = "https://";
+    }
+
     try {
-      return new URL("http://" + config.host + ":" + config.port + path);
+      return new URL(protocol + config.host + ":" + config.port + path);
     } catch (MalformedURLException e) {
       throw new RuntimeException(e.getMessage());
     }

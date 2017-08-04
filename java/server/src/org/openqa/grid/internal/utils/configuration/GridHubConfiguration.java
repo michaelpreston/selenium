@@ -69,6 +69,11 @@ public class GridHubConfiguration extends GridConfiguration {
    */
   static final Boolean DEFAULT_THROW_ON_CAPABILITY_NOT_PRESENT_TOGGLE = true;
 
+  /**
+   * Default hub allow HTTPS connections
+   */
+  static final Boolean DEFAULT_ALLOW_HTTPS_CONNECTION = false;
+
   /*
    * config parameters which do not serialize or de-serialize
    */
@@ -129,6 +134,17 @@ public class GridHubConfiguration extends GridConfiguration {
     arity = 1
   )
   public Boolean throwOnCapabilityNotPresent = DEFAULT_THROW_ON_CAPABILITY_NOT_PRESENT_TOGGLE;
+
+  /**
+   * Decides whether to use HTTPS scheme. Defaults to {@code false}.
+   */
+  @Expose
+  @Parameter(
+    names = "-https",
+    description = "<Boolean> true or false : If true, the hub will allow connections via HTTP/HTTPS. If set to false, the hub will allow connections via HTTP only.",
+    arity = 1
+  )
+  public Boolean allowHttpsConnection = DEFAULT_ALLOW_HTTPS_CONNECTION;
 
   /**
    * Creates a new configuration using the default values.
@@ -192,6 +208,9 @@ public class GridHubConfiguration extends GridConfiguration {
     if (isMergeAble(other.throwOnCapabilityNotPresent, throwOnCapabilityNotPresent)) {
       throwOnCapabilityNotPresent = other.throwOnCapabilityNotPresent;
     }
+    if (isMergeAble(other.allowHttpsConnection, allowHttpsConnection)) {
+      allowHttpsConnection = other.allowHttpsConnection;
+    }
   }
 
   @Override
@@ -203,6 +222,7 @@ public class GridHubConfiguration extends GridConfiguration {
     sb.append(toString(format, "newSessionWaitTimeout", newSessionWaitTimeout));
     sb.append(toString(format, "prioritizer", prioritizer != null ? prioritizer.getClass().getCanonicalName(): null));
     sb.append(toString(format, "throwOnCapabilityNotPresent", throwOnCapabilityNotPresent));
+    sb.append(toString(format, "allowHttpsConnection", allowHttpsConnection));
     return sb.toString();
   }
 
