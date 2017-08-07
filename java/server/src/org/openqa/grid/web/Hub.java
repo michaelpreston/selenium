@@ -39,6 +39,10 @@ import org.seleniumhq.jetty9.server.Server;
 import org.seleniumhq.jetty9.server.ServerConnector;
 import org.seleniumhq.jetty9.servlet.ServletContextHandler;
 import org.seleniumhq.jetty9.util.thread.QueuedThreadPool;
+import org.seleniumhq.jetty9.util.ssl.SslContextFactory;
+import org.seleniumhq.jetty9.server.SecureRequestCustomizer;
+import org.seleniumhq.jetty9.server.SslConnectionFactory;
+import org.seleniumhq.jetty9.server.Connector;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -146,16 +150,25 @@ public class Hub {
         server = new Server();
       }
 
-      HttpConfiguration httpConfig = new HttpConfiguration();
-      httpConfig.setSecureScheme("https");
-      httpConfig.setSecurePort(config.port);
+      ServerConnector connector = new ServerConnector(server);
+
+      HttpConfiguration httpsConfig = new HttpConfiguration();
+      httpsConfig.addCustomizer(new SecureRequestCustomizer());
+
+      SslContextFactory sslContextFactory = new SslContextFactory();
+      sslContextFactory.setKeyStorePath("/home/michael/ssl/keystore.jks");
+      sslContextFactory.setKeyStorePassword("password");
+      sslContextFactory.setKeyManagerPassword("password");
+
+      ServerConnector sslConnector = new ServerConnector(
+          server,
+          new SslConnectionFactory(sslContextFactory, "http/1.1"),
+          new HttpConnectionFactory(httpsConfig));
+      sslConnector.setPort(9998);
+
+      server.setConnectors(new Connector[] { connector, sslConnector });
 
       log.info("Will listen on " + config.port);
-
-      ServerConnector http = new ServerConnector(server, new HttpConnectionFactory(httpConfig));
-      http.setPort(config.port);
-
-      server.addConnector(http);
 
       ServletContextHandler root = new ServletContextHandler(ServletContextHandler.SESSIONS);
       root.setContextPath("/");
@@ -194,7 +207,7 @@ public class Hub {
 
   public URL getUrl(String path) {
     try {
-      return new URL("http://" + config.host + ":" + config.port + path);
+      return new URL("https://" + config.host + ":" + config.port + path);
     } catch (MalformedURLException e) {
       throw new RuntimeException(e.getMessage());
     }
