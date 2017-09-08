@@ -150,24 +150,50 @@ public class Hub {
         server = new Server();
       }
 
-      ServerConnector connector = new ServerConnector(server);
+      //Keystore configuration
+      String keystore = "/home/michael/Appium/keystore";
+      string keystorePath = System.getProperty("example.keystore", keystore);
+      File keystoreFile = new File(keystorePath);
 
-      HttpConfiguration httpsConfig = new HttpConfiguration();
-      httpsConfig.addCustomizer(new SecureRequestCustomizer());
+      if (!keystoreFile.exists()) {
+        throw FileNotFoundException(keystoreFile.getAbsolutePath());
+      }
 
+      //HTTP configuration
+      HttpConfiguration httpConfig = new HttpConfiguration();
+      httpConfig.setSecureScheme("https");
+      httpConfig.setSecurePort(8443);
+      httpConfig.setOutputBufferSize(32768);
+
+      //HTTP Connector
+      ServerConnector http = new ServerConnector(server,
+          new HttpConnectionFactory(httpConfig));
+      http.setPort(8080);
+      http.setIdleTimeout(30000);
+      
+      //SSL Context Factory for HTTPS
       SslContextFactory sslContextFactory = new SslContextFactory();
-      sslContextFactory.setKeyStorePath("/home/michael/ssl/keystore.jks");
+      sslContextFactory.setKeyStorePath(keystoreFile.getAbsolutePath());
       sslContextFactory.setKeyStorePassword("password");
-      sslContextFactory.setKeyManagerPassword("password");
+      sslContextFactory.setKeyManagerPassword("managerpassword");
 
-      ServerConnector sslConnector = new ServerConnector(
-          server,
-          new SslConnectionFactory(sslContextFactory, "http/1.1"),
-          new HttpConnectionFactory(httpsConfig));
-      sslConnector.setPort(9998);
+      //HTTPS configuration - reuses what we've set for HTTP but with SSL
+      HttpConfiguration httpsConfig = new HttpConfiguration(httpConfig);
+      SecureRequestCustomizer secureRequestCustomizer = new SecureRequestCustomizer();
+      
+      secureRequestCustomizer.setStsMaxAge(2000);
+      secureRequestCustomizer.setStsIncludeSubDomains(true);
+      httpsConfig.addCustomizer(secureRequestCustomizer);
 
-      server.setConnectors(new Connector[] { connector, sslConnector });
+      ServerConnector https = new ServerConnector(server,
+          new SslConnectionFactory(sslContextFactory,HttpVersion.HTTP_1_1.asString()),
+            new HttpConnectionFactory(httpsConfig));
+      https.setPort(8443);
+      https.setIdleTimeout(500000);
 
+      server.setConnectors(new Connector[] { http, https });
+
+      //Generic Selenium configuration
       log.info("Will listen on " + config.port);
 
       ServletContextHandler root = new ServletContextHandler(ServletContextHandler.SESSIONS);
