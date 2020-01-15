@@ -87,6 +87,14 @@ module Selenium
           return unless File.exist?(manifest_path)
 
           manifest = JSON.parse(File.read(manifest_path))
+          gecko_id(manifest) || name_and_version(manifest)
+        end
+
+        def gecko_id(manifest)
+          manifest.dig('browser_specific_settings', 'gecko', 'id')&.strip
+        end
+
+        def name_and_version(manifest)
           [manifest['name'].delete(' '), manifest['version']].join('@')
         end
       end # Extension
