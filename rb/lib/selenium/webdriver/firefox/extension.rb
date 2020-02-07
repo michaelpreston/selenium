@@ -91,7 +91,8 @@ module Selenium
         end
 
         def applications_gecko_id(manifest)
-          manifest.dig('applications', 'gecko', 'id')&.strip
+          manifest.dig('applications', 'gecko', 'id')&.strip ||
+            manifest.dig('browser_specific_settings', 'gecko', 'id')&.strip
         end
 
         def name_and_version(manifest)
